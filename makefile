@@ -15,32 +15,34 @@ all: deps compile run
 
 deps:
 	@mkdir -p $(LIB_DIR)
-	clj -Spath
+	@clj -Spath
 
 compile:
-	@echo "Current directory: $$(pwd)"
 	@echo "Compiling Java files..."
-	mkdir -p $(BUILD_DIR)
-	javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) $(SRC_DIR)/*.java
+	@mkdir -p $(BUILD_DIR)
+	@find $(SRC_DIR) -name "*.java" > sources.txt
+	@javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) @sources.txt
+	@rm sources.txt
 	@echo "Copying resources..."
-	mkdir -p $(BUILD_DIR)
-	cp -R $(RES_DIR)/* $(BUILD_DIR)
-	@echo "Contents of build directory:"
-	@find $(BUILD_DIR) -type f
+	@cp -R $(RES_DIR)/* $(BUILD_DIR)
 
 run:
-	java -cp $(BUILD_DIR):$(CLASSPATH) $(APP_NAME)
+	@java -cp $(BUILD_DIR):$(CLASSPATH) $(APP_NAME)
 
-uber:
-	mkdir -p $(BUILD_DIR) $(DIST_DIR)
-	javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) $(SRC_DIR)/*.java
-	cp -R $(RES_DIR)/* $(BUILD_DIR)
-	jar cvfe $(DIST_DIR)/$(APP_NAME).jar $(APP_NAME) -C $(BUILD_DIR) .
-	# Add dependencies to the uber jar
-	for file in $(LIB_DIR)/*.jar; do \
-		jar xf $$file -C $(BUILD_DIR) .; \
+uber: compile
+	@echo "Creating fat jar..."
+	@mkdir -p $(DIST_DIR)
+	@echo "Manifest-Version: 1.0" > $(BUILD_DIR)/MANIFEST.MF
+	@echo "Main-Class: $(APP_NAME)" >> $(BUILD_DIR)/MANIFEST.MF
+	@jar cvfm $(DIST_DIR)/$(APP_NAME).jar $(BUILD_DIR)/MANIFEST.MF -C $(BUILD_DIR) .
+	@for jar in $$(find $(LIB_DIR) -name '*.jar'); do \
+		echo "Adding $$jar to fat jar..."; \
+		jar xf $$jar; \
+		jar uf $(DIST_DIR)/$(APP_NAME).jar $$(find . -type f -not -path '*/META-INF/*'); \
+		rm -rf META-INF; \
 	done
-	jar uvfe $(DIST_DIR)/$(APP_NAME).jar $(APP_NAME) -C $(BUILD_DIR) .
+
+	@echo "Fat jar created: $(DIST_DIR)/$(APP_NAME).jar"
 
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
