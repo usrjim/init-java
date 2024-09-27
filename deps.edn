@@ -1,0 +1,2 @@
+{:deps {}
+ :mvn/local-repo "./lib"}
