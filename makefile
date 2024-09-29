@@ -20,9 +20,7 @@ deps:
 compile:
 	@echo "Compiling Java files..."
 	@mkdir -p $(BUILD_DIR)
-	@find $(SRC_DIR) -name "*.java" > sources.txt
-	@javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) @sources.txt
-	@rm sources.txt
+	@javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) $(shell find $(SRC_DIR) -name "*.java")
 	@echo "Copying resources..."
 	@cp -R $(RES_DIR)/* $(BUILD_DIR)
 
@@ -31,17 +29,14 @@ run:
 
 uber: compile
 	@echo "Creating fat jar..."
-	@mkdir -p $(DIST_DIR)
-	@echo "Manifest-Version: 1.0" > $(BUILD_DIR)/MANIFEST.MF
-	@echo "Main-Class: $(APP_NAME)" >> $(BUILD_DIR)/MANIFEST.MF
-	@jar cvfm $(DIST_DIR)/$(APP_NAME).jar $(BUILD_DIR)/MANIFEST.MF -C $(BUILD_DIR) .
-	@for jar in $$(find $(LIB_DIR) -name '*.jar'); do \
-		echo "Adding $$jar to fat jar..."; \
-		jar xf $$jar; \
-		jar uf $(DIST_DIR)/$(APP_NAME).jar $$(find . -type f -not -path '*/META-INF/*'); \
-		rm -rf META-INF; \
-	done
-
+	@mkdir -p $(DIST_DIR) temp_build
+	@cp -R $(BUILD_DIR)/* temp_build/
+	@echo "Manifest-Version: 1.0\nMain-Class: $(APP_NAME)" > temp_build/MANIFEST.MF
+	@cd temp_build && \
+	find ../$(LIB_DIR) -name '*.jar' | grep -v "lib/org/clojure" | \
+	xargs -I {} jar xf {}
+	@jar cvfm $(DIST_DIR)/$(APP_NAME).jar temp_build/MANIFEST.MF -C temp_build .
+	@rm -rf temp_build
 	@echo "Fat jar created: $(DIST_DIR)/$(APP_NAME).jar"
 
 clean:

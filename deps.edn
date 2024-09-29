@@ -1,2 +1,2 @@
-{:deps {}
+{:deps {org.json/json {:mvn/version "20240303"}}
  :mvn/local-repo "./lib"}
