@@ -9,25 +9,26 @@ JAVA_VERSION = 11
 # Find all JAR files in the lib directory
 CLASSPATH = $(shell find $(LIB_DIR) -name '*.jar' | tr '\n' ':')
 
-.PHONY: all clean uber deps
+.PHONY: _help all clean uber deps
 
-all: deps compile run
+_help:
+	@egrep -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-deps:
+deps: ## deps
 	@mkdir -p $(LIB_DIR)
 	@clj -Spath
 
-compile:
+compile: ## compile
 	@echo "Compiling Java files..."
 	@mkdir -p $(BUILD_DIR)
 	@javac --release $(JAVA_VERSION) -cp $(CLASSPATH) -d $(BUILD_DIR) $(shell find $(SRC_DIR) -name "*.java")
 	@echo "Copying resources..."
 	@cp -R $(RES_DIR)/* $(BUILD_DIR)
 
-run:
+run: ## run
 	@java -cp $(BUILD_DIR):$(CLASSPATH) $(APP_NAME)
 
-uber: compile
+uber: compile ## compile and package
 	@echo "Creating fat jar..."
 	@mkdir -p $(DIST_DIR) temp_build
 	@cp -R $(BUILD_DIR)/* temp_build/
@@ -39,5 +40,5 @@ uber: compile
 	@rm -rf temp_build
 	@echo "Fat jar created: $(DIST_DIR)/$(APP_NAME).jar"
 
-clean:
+clean: ## clean
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
